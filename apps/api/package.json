@@ -1,0 +1,22 @@
+{
+  "name": "@nurunode/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/server.ts",
+    "momo:provision": "bun scripts/momo-sandbox-provision.ts",
+    "start": "bun src/server.ts",
+    "migrate": "bun ../../packages/database/src/migrate-cli.ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.1",
+    "@nurunode/database": "workspace:*",
+    "@nurunode/ledger": "workspace:*",
+    "@nurunode/payment-adapters": "workspace:*",
+    "@nurunode/provider-adapters": "workspace:*",
+    "@nurunode/shared": "workspace:*",
+    "fastify": "^5.2.0",
+    "zod": "^3.24.2"
+  }
+}

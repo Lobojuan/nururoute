@@ -1,0 +1,23 @@
+{
+  "name": "@nurunode/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./pglite": "./src/pglite.ts",
+    "./pg": "./src/pg.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "migrate": "bun run src/migrate-cli.ts"
+  },
+  "dependencies": {
+    "@nurunode/shared": "workspace:*",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.4",
+    "@types/pg": "^8.11.10"
+  }
+}

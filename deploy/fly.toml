@@ -1,0 +1,25 @@
+# fly launch --no-deploy --copy-config --config deploy/fly.toml --dockerfile deploy/api.Dockerfile
+app = "nurunode-api"
+primary_region = "jnb"   # Johannesburg — closest Fly region to Ghana/Nigeria/East Africa
+
+[build]
+  dockerfile = "deploy/api.Dockerfile"
+
+[env]
+  API_PORT = "4000"
+  NODE_ENV = "production"
+  PAYMENT_ADAPTER = "mock_momo"
+  PROVIDER_ADAPTER = "mock"
+  ALLOW_DEV_LOGIN = "true"
+
+[http_service]
+  internal_port = 4000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[http_service.checks]]
+  path = "/health"
+  interval = "30s"
+  timeout = "5s"

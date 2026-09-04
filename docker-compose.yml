@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nurunode-postgres
+    environment:
+      POSTGRES_USER: nurunode
+      POSTGRES_PASSWORD: nurunode
+      POSTGRES_DB: nurunode
+    ports:
+      - "5432:5432"
+    volumes:
+      - nurunode_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nurunode"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  nurunode_pgdata:

@@ -1,0 +1,515 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * NuruRoute design system.
+ * Brand: deep navy, electric blue, cyan, warm gold, white.
+ * All colours are oklch tokens; components only use semantic utilities.
+ */
+
+@theme inline {
+  --font-display: "Unbounded", "Sora", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+
+  /* Afro-futurist extensions */
+  --color-ember: var(--ember);
+  --color-ember-foreground: var(--ember-foreground);
+  --color-kente-green: var(--kente-green);
+  --color-navy-abyss: var(--navy-abyss);
+  --color-gold-bright: var(--gold-bright);
+  --shadow-depth: 0 30px 60px -20px oklch(0.15 0.06 264 / 0.55), 0 0 0 1px oklch(1 0 0 / 0.04) inset;
+  --shadow-gold-glow: 0 0 0 1px oklch(0.82 0.15 80 / 0.5), 0 20px 50px -20px oklch(0.82 0.15 80 / 0.55);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Brand extensions */
+  --color-navy: var(--navy);
+  --color-navy-foreground: var(--navy-foreground);
+  --color-navy-deep: var(--navy-deep);
+  --color-electric: var(--electric);
+  --color-electric-foreground: var(--electric-foreground);
+  --color-cyan: var(--cyan);
+  --color-cyan-foreground: var(--cyan-foreground);
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+}
+
+:root {
+  --radius: 0.875rem;
+  --background: oklch(0.985 0.004 240);
+  --foreground: oklch(0.2 0.045 262);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.045 262);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.045 262);
+  --primary: oklch(0.26 0.075 262); /* deep navy */
+  --primary-foreground: oklch(0.985 0.004 240);
+  --secondary: oklch(0.955 0.012 240);
+  --secondary-foreground: oklch(0.26 0.075 262);
+  --muted: oklch(0.955 0.012 240);
+  --muted-foreground: oklch(0.5 0.035 258);
+  --accent: oklch(0.94 0.03 230);
+  --accent-foreground: oklch(0.26 0.075 262);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0.004 240);
+  --border: oklch(0.91 0.012 245);
+  --input: oklch(0.91 0.012 245);
+  --ring: oklch(0.6 0.19 250);
+  --chart-1: oklch(0.6 0.19 250);
+  --chart-2: oklch(0.78 0.13 210);
+  --chart-3: oklch(0.8 0.15 80);
+  --chart-4: oklch(0.26 0.075 262);
+  --chart-5: oklch(0.7 0.15 160);
+  --sidebar: oklch(0.985 0.004 240);
+  --sidebar-foreground: oklch(0.2 0.045 262);
+  --sidebar-primary: oklch(0.26 0.075 262);
+  --sidebar-primary-foreground: oklch(0.985 0.004 240);
+  --sidebar-accent: oklch(0.955 0.012 240);
+  --sidebar-accent-foreground: oklch(0.26 0.075 262);
+  --sidebar-border: oklch(0.91 0.012 245);
+  --sidebar-ring: oklch(0.6 0.19 250);
+
+  --navy: oklch(0.26 0.075 262);
+  --navy-deep: oklch(0.19 0.06 264);
+  --navy-foreground: oklch(0.985 0.004 240);
+  --electric: oklch(0.6 0.19 250);
+  --electric-foreground: oklch(0.99 0 0);
+  --cyan: oklch(0.8 0.13 210);
+  --cyan-foreground: oklch(0.2 0.045 262);
+  --gold: oklch(0.82 0.15 80);
+  --gold-foreground: oklch(0.25 0.06 70);
+  --success: oklch(0.64 0.15 160);
+  --success-foreground: oklch(0.99 0 0);
+  --warning: oklch(0.75 0.16 65);
+  --warning-foreground: oklch(0.25 0.06 70);
+
+  --ember: oklch(0.66 0.2 35);
+  --ember-foreground: oklch(0.99 0 0);
+  --kente-green: oklch(0.6 0.14 150);
+  --navy-abyss: oklch(0.14 0.05 266);
+  --gold-bright: oklch(0.9 0.14 88);
+}
+
+.dark {
+  --background: oklch(0.17 0.05 264);
+  --foreground: oklch(0.97 0.005 240);
+  --card: oklch(0.22 0.055 263);
+  --card-foreground: oklch(0.97 0.005 240);
+  --popover: oklch(0.22 0.055 263);
+  --popover-foreground: oklch(0.97 0.005 240);
+  --primary: oklch(0.8 0.13 210);
+  --primary-foreground: oklch(0.2 0.045 262);
+  --secondary: oklch(0.28 0.05 262);
+  --secondary-foreground: oklch(0.97 0.005 240);
+  --muted: oklch(0.28 0.05 262);
+  --muted-foreground: oklch(0.72 0.03 250);
+  --accent: oklch(0.3 0.06 255);
+  --accent-foreground: oklch(0.97 0.005 240);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.97 0.005 240);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.8 0.13 210);
+  --sidebar: oklch(0.22 0.055 263);
+  --sidebar-foreground: oklch(0.97 0.005 240);
+  --sidebar-primary: oklch(0.8 0.13 210);
+  --sidebar-primary-foreground: oklch(0.2 0.045 262);
+  --sidebar-accent: oklch(0.28 0.05 262);
+  --sidebar-accent-foreground: oklch(0.97 0.005 240);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.8 0.13 210);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+    min-width: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    overflow-x: hidden;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+}
+
+@utility container-site {
+  width: 100%;
+  max-width: 76rem;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+  @media (min-width: 640px) {
+    padding-inline: 1.5rem;
+  }
+  @media (min-width: 1024px) {
+    padding-inline: 2rem;
+  }
+}
+
+@utility surface-navy {
+  background:
+    radial-gradient(60rem 30rem at 85% -10%, oklch(0.6 0.19 250 / 0.35), transparent 60%),
+    radial-gradient(40rem 24rem at -10% 110%, oklch(0.8 0.13 210 / 0.22), transparent 60%),
+    var(--navy-deep);
+  color: var(--navy-foreground);
+}
+
+@utility grid-fade {
+  background-image:
+    linear-gradient(to right, oklch(1 0 0 / 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(1 0 0 / 0.06) 1px, transparent 1px);
+  background-size: 2.5rem 2.5rem;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+}
+
+@utility text-gold-gradient {
+  background: linear-gradient(100deg, oklch(0.9 0.12 85), oklch(0.78 0.16 75));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Afro-futurist layer ---------- */
+
+/* Deep hero surface: abyss navy with gold + cyan light pools. */
+@utility surface-abyss {
+  background:
+    radial-gradient(70rem 36rem at 80% -20%, oklch(0.6 0.19 250 / 0.28), transparent 60%),
+    radial-gradient(50rem 30rem at 0% 120%, oklch(0.82 0.15 80 / 0.16), transparent 60%),
+    linear-gradient(180deg, var(--navy-abyss), var(--navy-deep));
+  color: var(--navy-foreground);
+}
+
+/* Aurora surface: abyss navy lit by gold, ember, cyan and kente-green light pools with a faint weave.
+   Used behind the 3D product ring. Slowly drifts unless reduced motion is requested. */
+@utility surface-aurora {
+  position: relative;
+  color: var(--navy-foreground);
+  background-color: var(--navy-abyss);
+  background-image:
+    radial-gradient(42rem 26rem at 12% 8%, oklch(0.82 0.15 80 / 0.34), transparent 62%),
+    radial-gradient(38rem 28rem at 88% 18%, oklch(0.66 0.2 35 / 0.3), transparent 62%),
+    radial-gradient(46rem 30rem at 70% 105%, oklch(0.8 0.13 210 / 0.28), transparent 60%),
+    radial-gradient(34rem 24rem at 15% 100%, oklch(0.6 0.14 150 / 0.26), transparent 60%),
+    radial-gradient(60rem 40rem at 50% 50%, oklch(0.35 0.12 265 / 0.6), transparent 70%),
+    repeating-linear-gradient(90deg, oklch(0.82 0.15 80 / 0.05) 0 2px, transparent 2px 28px),
+    repeating-linear-gradient(0deg, oklch(0.8 0.13 210 / 0.04) 0 2px, transparent 2px 28px),
+    linear-gradient(180deg, var(--navy-abyss), oklch(0.2 0.07 268), var(--navy-deep));
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 28px 28px, 28px 28px, 100% 100%;
+  animation: aurora-drift 18s ease-in-out infinite alternate;
+}
+
+@keyframes aurora-drift {
+  from { background-position: 0% 0%, 0% 0%, 0% 0%, 0% 0%, 0% 0%, 0 0, 0 0, 0 0; }
+  to { background-position: 6% 4%, -5% 3%, 4% -5%, -4% -3%, 2% 2%, 0 0, 0 0, 0 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .surface-aurora { animation: none; }
+}
+
+/* Woven kente field: interlocking warp/weft stripes in gold, navy, ember and green. Pure CSS. */
+@utility kente-weave {
+  background-color: var(--navy-abyss);
+  background-image:
+    repeating-linear-gradient(90deg, oklch(0.82 0.15 80 / 0.16) 0 6px, transparent 6px 18px, oklch(0.66 0.2 35 / 0.14) 18px 22px, transparent 22px 36px, oklch(0.6 0.14 150 / 0.12) 36px 40px, transparent 40px 54px),
+    repeating-linear-gradient(0deg, oklch(0.82 0.15 80 / 0.12) 0 6px, transparent 6px 18px, oklch(0.8 0.13 210 / 0.1) 18px 22px, transparent 22px 36px, oklch(0.66 0.2 35 / 0.1) 36px 40px, transparent 40px 54px);
+  background-size: 54px 54px;
+}
+
+/* Kente strip: a bold horizontal band used as a section divider or card edge. */
+@utility kente-strip {
+  height: 10px;
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      var(--gold) 0 28px,
+      var(--navy-abyss) 28px 34px,
+      var(--ember) 34px 56px,
+      var(--navy-abyss) 56px 62px,
+      var(--kente-green) 62px 84px,
+      var(--navy-abyss) 84px 90px,
+      var(--cyan) 90px 112px,
+      var(--navy-abyss) 112px 118px
+    );
+}
+
+@utility kente-strip-thin {
+  height: 4px;
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      var(--gold) 0 18px,
+      transparent 18px 22px,
+      var(--ember) 22px 34px,
+      transparent 34px 38px,
+      var(--cyan) 38px 50px,
+      transparent 50px 54px
+    );
+}
+
+/* Adinkra-inspired diamond lattice, very subtle, for calm backgrounds. */
+@utility adinkra-lattice {
+  background-image:
+    linear-gradient(45deg, oklch(0.26 0.075 262 / 0.025) 25%, transparent 25%, transparent 75%, oklch(0.26 0.075 262 / 0.025) 75%),
+    linear-gradient(-45deg, oklch(0.26 0.075 262 / 0.025) 25%, transparent 25%, transparent 75%, oklch(0.26 0.075 262 / 0.025) 75%);
+  background-size: 28px 28px;
+}
+
+/* Glass card with a gold hairline edge — the signature card treatment on dark surfaces. */
+@utility card-gold-glass {
+  position: relative;
+  background: linear-gradient(160deg, oklch(1 0 0 / 0.08), oklch(1 0 0 / 0.02));
+  border: 1px solid oklch(0.82 0.15 80 / 0.28);
+  box-shadow: var(--shadow-depth);
+  backdrop-filter: blur(14px);
+}
+
+@utility ring-gold-glow {
+  box-shadow: var(--shadow-gold-glow);
+}
+
+/* 3D helpers */
+@utility perspective-1200 {
+  perspective: 1200px;
+}
+@utility perspective-2000 {
+  perspective: 2000px;
+}
+@utility preserve-3d {
+  transform-style: preserve-3d;
+}
+@utility backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Film grain overlay for cinematic previews */
+@utility grain {
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.08;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+
+/* Gold text with a warm sheen */
+@utility text-gold-sheen {
+  background: linear-gradient(100deg, oklch(0.95 0.1 90) 0%, oklch(0.82 0.15 80) 45%, oklch(0.7 0.14 70) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Kinetic-bold outline type */
+@utility text-stroke-gold {
+  -webkit-text-stroke: 1.5px oklch(0.82 0.15 80 / 0.65);
+  color: transparent;
+}
+@utility text-stroke-faint {
+  -webkit-text-stroke: 1px oklch(0.985 0.004 240 / 0.13);
+  color: transparent;
+}
+@utility text-stroke-cyan {
+  -webkit-text-stroke: 1.5px oklch(0.8 0.13 210 / 0.6);
+  color: transparent;
+}
+
+@keyframes coin-travel {
+  0% { offset-distance: 0%; opacity: 0; transform: scale(0.6); }
+  10% { opacity: 1; transform: scale(1); }
+  90% { opacity: 1; }
+  100% { offset-distance: 100%; opacity: 0; transform: scale(0.6); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
+/* ---- Signature cedi coin ---- */
+@utility cedi-coin {
+  background:
+    radial-gradient(circle at 32% 28%, oklch(0.97 0.08 92) 0%, transparent 38%),
+    conic-gradient(from 200deg, var(--gold-bright), var(--gold), oklch(0.68 0.14 70), var(--gold-bright), var(--gold));
+  box-shadow:
+    inset 0 0 0 2px oklch(0.95 0.1 90 / 0.7),
+    inset 0 -3px 6px oklch(0.55 0.13 70 / 0.6),
+    0 6px 18px -6px oklch(0.82 0.15 80 / 0.7);
+}
+@utility cedi-edge {
+  background: repeating-conic-gradient(from 0deg, oklch(0.62 0.13 70 / 0.5) 0 3deg, transparent 3deg 6deg);
+  mask: radial-gradient(circle, transparent 78%, black 79%);
+  -webkit-mask: radial-gradient(circle, transparent 78%, black 79%);
+}
+@utility cedi-spin {
+  animation: cedi-spin 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@utility cedi-shimmer {
+  animation: cedi-shimmer 2.4s ease-in-out infinite;
+}
+@keyframes cedi-spin {
+  0% { transform: rotateY(0deg); }
+  45% { transform: rotateY(360deg); }
+  100% { transform: rotateY(360deg); }
+}
+@keyframes cedi-shimmer {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.18); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cedi-spin, .cedi-shimmer { animation: none; }
+}
+
+/* ---------- Signature experience layer ---------- */
+
+/* Structural kente rhythm: vertical warp lines used behind data grids (never a pasted pattern). */
+@utility kente-rhythm {
+  background-image:
+    repeating-linear-gradient(90deg, oklch(0.82 0.15 80 / 0.07) 0 1px, transparent 1px 72px),
+    repeating-linear-gradient(90deg, oklch(0.8 0.13 210 / 0.05) 0 1px, transparent 1px 216px);
+}
+
+/* Pointer-lit reflection for product cards: --mx / --my are set from JS (0–100). */
+@utility card-reflect {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: radial-gradient(26rem circle at var(--mx, 50%) var(--my, 0%), oklch(0.97 0.08 92 / 0.22), transparent 42%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    z-index: 2;
+  }
+  &:hover::before, &[data-lit="true"]::before { opacity: 1; }
+}
+
+/* Mirrored floor under the product ring. */
+@utility ring-floor {
+  background:
+    radial-gradient(60% 100% at 50% 0%, oklch(0.82 0.15 80 / 0.22), transparent 70%),
+    repeating-linear-gradient(90deg, oklch(0.82 0.15 80 / 0.08) 0 1px, transparent 1px 36px);
+  mask-image: linear-gradient(to bottom, black, transparent 85%);
+  -webkit-mask-image: linear-gradient(to bottom, black, transparent 85%);
+}
+
+/* Cyan routing light travelling along SVG paths. */
+@keyframes route-dash {
+  to { stroke-dashoffset: -240; }
+}
+.route-line {
+  stroke-dasharray: 6 14;
+  animation: route-dash 6s linear infinite;
+}
+@keyframes route-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+.route-node { animation: route-pulse 2.8s ease-in-out infinite; }
+
+/* Editorial display: tight, monumental headline. */
+@utility display-editorial {
+  font-family: var(--font-display);
+  letter-spacing: -0.045em;
+  line-height: 0.92;
+  font-weight: 800;
+}
+
+/* Stat rail: border-left data readout used in the hero. */
+@utility stat-rail {
+  border-left: 2px solid oklch(0.82 0.15 80 / 0.5);
+  padding-left: 0.9rem;
+}
+
+/* Terminal look for the coding moment. */
+@utility terminal {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: linear-gradient(180deg, oklch(0.16 0.05 266), oklch(0.12 0.04 266));
+  border: 1px solid oklch(0.82 0.15 80 / 0.2);
+}
+
+@keyframes caret { 50% { opacity: 0; } }
+.caret::after { content: "▍"; animation: caret 1s steps(1) infinite; color: var(--gold); }
+
+@media (prefers-reduced-motion: reduce) {
+  .route-line, .route-node, .caret::after { animation: none; }
+}
+html[data-motion="reduced"] .route-line,
+html[data-motion="reduced"] .route-node { animation: none; }
