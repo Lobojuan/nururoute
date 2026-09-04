@@ -15,6 +15,7 @@ import {
   createApiKeySchema,
   createOrgSchema,
   devLoginSchema,
+  selectSubscriptionPlanSchema,
   updateModelPriceSchema,
   isNuruError,
   simulateTopUpSchema,
@@ -244,6 +245,42 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     });
   }
 
+  type SubscriptionRow = {
+    slug: string;
+    display_name: string;
+    monthly_price_pesewas: number;
+    tier_rank: number;
+    plan_status: "active" | "retired";
+    subscription_status: "pending_payment" | "active" | "past_due" | "expired" | "cancelled" | null;
+    selected_at: unknown | null;
+    period_start: unknown | null;
+    period_end: unknown | null;
+  };
+
+  const subscriptionSelect = `
+    SELECT p.slug, p.display_name, p.monthly_price_pesewas, p.tier_rank,
+           p.status AS plan_status, s.status AS subscription_status,
+           s.selected_at, s.period_start, s.period_end
+      FROM subscriptions s
+      JOIN subscription_plans p ON p.id = s.plan_id
+     WHERE s.org_id = $1`;
+
+  function subscriptionDto(row: SubscriptionRow) {
+    return {
+      plan: {
+        slug: row.slug,
+        displayName: row.display_name,
+        monthlyPricePesewas: Number(row.monthly_price_pesewas),
+        tierRank: Number(row.tier_rank),
+        status: row.plan_status,
+      },
+      status: row.subscription_status,
+      selectedAt: row.selected_at ? String(row.selected_at) : null,
+      periodStart: row.period_start ? String(row.period_start) : null,
+      periodEnd: row.period_end ? String(row.period_end) : null,
+    };
+  }
+
   // ---------- health ----------
   app.get("/health", async () => ({
     ok: true,
@@ -254,6 +291,29 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     mockMode: paymentAdapter.mode === "mock",
     liveMoney: false,
   }));
+
+  // ---------- subscription catalogue ----------
+  app.get("/plans", async () => {
+    const { rows } = await db.query<{
+      slug: string;
+      display_name: string;
+      monthly_price_pesewas: number;
+      tier_rank: number;
+      status: "active" | "retired";
+    }>(
+      `SELECT slug, display_name, monthly_price_pesewas, tier_rank, status
+         FROM subscription_plans WHERE status = 'active' ORDER BY tier_rank`,
+    );
+    return {
+      plans: rows.map((plan) => ({
+        slug: plan.slug,
+        displayName: plan.display_name,
+        monthlyPricePesewas: Number(plan.monthly_price_pesewas),
+        tierRank: Number(plan.tier_rank),
+        status: plan.status,
+      })),
+    };
+  });
 
   // ---------- private platform back office ----------
   app.get("/admin/overview", async (req) => {
@@ -468,6 +528,46 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       [req.params.orgId],
     );
     return { requests: rows };
+  });
+
+  app.get<{ Params: { orgId: string } }>("/orgs/:orgId/subscription", async (req) => {
+    const claims = await requireAuth(req);
+    await requireOrgMember(claims.sub, req.params.orgId, req);
+    const { rows } = await db.query<SubscriptionRow>(subscriptionSelect, [req.params.orgId]);
+    const subscription = rows[0];
+    if (!subscription) throw new NuruError("NOT_FOUND", "No subscription selected");
+    return subscriptionDto(subscription);
+  });
+
+  // Selecting a plan is intentionally not activation. MTN/PSP verification
+  // must succeed before a future grant workflow can make it active.
+  app.post<{ Params: { orgId: string } }>("/orgs/:orgId/subscription/select", async (req, reply) => {
+    const claims = await requireAuth(req);
+    const { role } = await requireOrgMember(claims.sub, req.params.orgId, req);
+    if (role !== "owner") throw new NuruError("FORBIDDEN", "Only organisation owners can select a plan");
+    const body = selectSubscriptionPlanSchema.parse(req.body);
+    const plan = await db.query<{ id: string }>(
+      "SELECT id FROM subscription_plans WHERE slug = $1 AND status = 'active'",
+      [body.planSlug],
+    );
+    const planId = plan.rows[0]?.id;
+    if (!planId) throw new NuruError("NOT_FOUND", "Subscription plan is not available");
+    await db.transaction(async (tx) => {
+      await tx.query(
+        `INSERT INTO subscriptions (org_id, plan_id, status)
+         VALUES ($1, $2, 'pending_payment')
+         ON CONFLICT (org_id) DO UPDATE SET plan_id = EXCLUDED.plan_id, status = 'pending_payment',
+           selected_at = now(), period_start = NULL, period_end = NULL, updated_at = now()`,
+        [req.params.orgId, planId],
+      );
+      await tx.query(
+        `INSERT INTO subscription_events (org_id, subscription_id, event_type, metadata)
+         VALUES ($1, $2, 'plan_selected', $3::jsonb)`,
+        [req.params.orgId, planId, JSON.stringify({ planSlug: body.planSlug, selectedBy: claims.sub })],
+      );
+    });
+    const selected = await db.query<SubscriptionRow>(subscriptionSelect, [req.params.orgId]);
+    return reply.status(201).send(subscriptionDto(selected.rows[0]!));
   });
 
   // ---------- top-ups ----------

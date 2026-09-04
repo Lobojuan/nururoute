@@ -111,6 +111,10 @@ export const createApiKeySchema = z.object({
   name: z.string().trim().min(1).max(60),
 });
 
+export const selectSubscriptionPlanSchema = z.object({
+  planSlug: z.enum(["free", "starter", "builder", "pro"]),
+});
+
 export const simulateTopUpSchema = z.object({
   amountPesewas: z.number().int().min(100).max(1_000_000_00),
   phone: z

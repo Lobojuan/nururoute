@@ -6,6 +6,7 @@
 2. **Mock by default.** `PAYMENT_ADAPTER=mock` and `PROVIDER_ADAPTER=mock` are the defaults. The only other permitted value is `PAYMENT_ADAPTER=momo_sandbox` (approved 2026-09-02): the MTN MoMo **sandbox** Collections API, which is a test environment with no real money. The adapter and the env loader both refuse `MTN_MOMO_TARGET_ENV` values other than `sandbox`. Any other adapter value makes the API refuse to start.
 3. **Upstream keys never reach the client.** The web app has no provider SDKs and no access to provider env vars. The only network target of the browser is the NuruNode API.
 4. **The API is the only writer.** Only `apps/api` holds `DATABASE_URL`. The web app never talks to the database.
+5. **NuruRoute is a customer application, not an AI API reseller.** Customers use NuruRoute's own web/mobile interface; the server may call an approved provider with NuruRoute's server-side key. Do not expose an external route that accepts a raw third-party developer prompt and returns raw provider output without an explicit written provider-terms review and product approval.
 
 ## Money-handling rules
 
@@ -42,3 +43,10 @@
 - Any real AI provider adapter
 - Any code path that moves money without a reservation
 - Any change that adds a mutable balance column
+
+## Subscription product rules
+
+- The public plan catalogue is versioned in the database: Free, Starter (GHS 20), Builder (GHS 100), and Pro (GHS 400). Customer prices must not be duplicated in browser code.
+- A customer selecting a plan creates a `pending_payment` subscription only. It must not activate the subscription or grant usage allowance until a verified payment workflow is implemented.
+- Monthly plan allowance and customer cash must remain separate, append-only accounting sources. Allowance spends first and may expire; the customer's own verified cash top-ups never expire.
+- A future allowance-expiry job must only remove a grant's remaining available amount. It must never take customer cash or make a wallet negative.
