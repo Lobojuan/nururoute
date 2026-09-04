@@ -182,6 +182,26 @@ describe("developer API keys", () => {
     expect(mint.statusCode).toBe(403);
   });
 
+  it("does not let an ordinary organisation member issue a developer key", async () => {
+    const member = await app.inject({
+      method: "POST",
+      url: "/auth/dev-login",
+      payload: { email: "member@n.test" },
+    });
+    const memberId = member.json().user.id;
+    await db.query("INSERT INTO org_members (org_id, user_id, role) VALUES ($1, $2, 'member')", [
+      orgId,
+      memberId,
+    ]);
+    const res = await app.inject({
+      method: "POST",
+      url: `/orgs/${orgId}/api-keys`,
+      headers: auth(member.json().token),
+      payload: { name: "Unauthorised key" },
+    });
+    expect(res.statusCode).toBe(403);
+  });
+
   it("revoked keys stop working", async () => {
     const del = await app.inject({
       method: "DELETE",

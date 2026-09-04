@@ -102,13 +102,25 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     const header = req.headers.authorization;
     const token = header?.startsWith("Bearer ") ? header.slice(7) : undefined;
     if (token?.startsWith(API_KEY_PREFIX)) {
-      const { rows } = await db.query<{ id: string; org_id: string; created_by: string; email: string }>(
-        `SELECT k.id, k.org_id, k.created_by, u.email FROM api_keys k JOIN users u ON u.id = k.created_by
+      const { rows } = await db.query<{
+        id: string;
+        org_id: string;
+        created_by: string;
+        email: string;
+        developer_access_status: "active" | "paused";
+      }>(
+        `SELECT k.id, k.org_id, k.created_by, u.email, o.developer_access_status
+           FROM api_keys k
+           JOIN users u ON u.id = k.created_by
+           JOIN organisations o ON o.id = k.org_id
           WHERE k.key_hash = $1 AND k.revoked_at IS NULL`,
         [hashKey(token)],
       );
       const k = rows[0];
       if (!k) throw new NuruError("UNAUTHORIZED", "Invalid or revoked API key");
+      if (k.developer_access_status !== "active") {
+        throw new NuruError("FORBIDDEN", "Developer API access is temporarily paused for this organisation");
+      }
       void db.query("UPDATE api_keys SET last_used_at = now() WHERE id = $1", [k.id]);
       req.apiKey = { id: k.id, orgId: k.org_id };
       req.session = { sub: k.created_by, email: k.email, exp: 0 };
@@ -137,6 +149,63 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     const row = rows[0];
     if (!row) throw new NuruError("FORBIDDEN", "You are not a member of this organisation");
     return { walletId: row.wallet_id, role: req?.apiKey ? "api_key" : row.role };
+  }
+
+  type PlatformRole = "support" | "finance" | "provider_ops" | "super_admin";
+
+  /**
+   * The back office is a server-side role boundary. Hiding an admin link in
+   * the browser is not authorization; every admin route calls this helper.
+   */
+  async function requirePlatformAdmin(
+    req: FastifyRequest,
+    allowed?: readonly PlatformRole[],
+  ): Promise<{ userId: string; role: PlatformRole }> {
+    const claims = await requireAuth(req);
+    if (req.apiKey) throw new NuruError("FORBIDDEN", "Developer API keys cannot access the back office");
+    const { rows } = await db.query<{ role: PlatformRole }>(
+      "SELECT role FROM platform_admins WHERE user_id = $1 AND active = true",
+      [claims.sub],
+    );
+    const role = rows[0]?.role;
+    if (!role || (allowed && !allowed.includes(role))) {
+      throw new NuruError("FORBIDDEN", "Platform-admin permission required");
+    }
+    return { userId: claims.sub, role };
+  }
+
+  async function modelControls() {
+    const { rows } = await db.query<{
+      model_id: string;
+      status: "active" | "paused";
+      max_output_tokens: number | null;
+      updated_at: unknown;
+    }>("SELECT model_id, status, max_output_tokens, updated_at FROM platform_model_controls");
+    const controls = new Map(rows.map((row) => [row.model_id, row]));
+    return providerAdapter.listModels().map((model) => {
+      const control = controls.get(model.id);
+      return {
+        id: model.id,
+        displayName: model.displayName,
+        provider: model.provider,
+        status: control?.status ?? "active",
+        maxOutputTokens: control?.max_output_tokens ?? model.maxOutputTokens,
+        updatedAt: control?.updated_at ? String(control.updated_at) : null,
+      };
+    });
+  }
+
+  async function assertModelAvailable(modelId: string): Promise<number | null> {
+    providerAdapter.getModel(modelId); // normalises unknown models to NOT_FOUND
+    const { rows } = await db.query<{ status: "active" | "paused"; max_output_tokens: number | null }>(
+      "SELECT status, max_output_tokens FROM platform_model_controls WHERE model_id = $1",
+      [modelId],
+    );
+    const control = rows[0];
+    if (control?.status === "paused") {
+      throw new NuruError("FORBIDDEN", "This model is temporarily unavailable");
+    }
+    return control?.max_output_tokens ?? null;
   }
 
   /** Effective per-1k prices for one org: custom row if present, otherwise the catalog default. */
@@ -185,6 +254,126 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     mockMode: paymentAdapter.mode === "mock",
     liveMoney: false,
   }));
+
+  // ---------- private platform back office ----------
+  app.get("/admin/overview", async (req) => {
+    await requirePlatformAdmin(req);
+    const [organisations, activeKeys, pendingTopups, failedRequests] = await Promise.all([
+      db.query<{ count: string }>("SELECT count(*)::text AS count FROM organisations"),
+      db.query<{ count: string }>("SELECT count(*)::text AS count FROM api_keys WHERE revoked_at IS NULL"),
+      db.query<{ count: string }>("SELECT count(*)::text AS count FROM payment_intents WHERE status = 'pending'"),
+      db.query<{ count: string }>("SELECT count(*)::text AS count FROM usage_requests WHERE status = 'failed'"),
+    ]);
+    return {
+      mode: {
+        paymentAdapter: paymentAdapter.provider,
+        paymentMode: paymentAdapter.mode,
+        providerAdapter: providerAdapter.provider,
+        liveMoney: false,
+      },
+      counts: {
+        organisations: Number(organisations.rows[0]?.count ?? 0),
+        activeDeveloperKeys: Number(activeKeys.rows[0]?.count ?? 0),
+        pendingTopUps: Number(pendingTopups.rows[0]?.count ?? 0),
+        failedAiRequests: Number(failedRequests.rows[0]?.count ?? 0),
+      },
+    };
+  });
+
+  app.get("/admin/model-controls", async (req) => {
+    await requirePlatformAdmin(req);
+    return { models: await modelControls() };
+  });
+
+  app.post<{ Params: { modelId: string } }>("/admin/model-controls/:modelId/pause", async (req) => {
+    const admin = await requirePlatformAdmin(req, ["provider_ops", "super_admin"]);
+    providerAdapter.getModel(req.params.modelId);
+    await db.transaction(async (tx) => {
+      await tx.query(
+        `INSERT INTO platform_model_controls (model_id, status, max_output_tokens, updated_by)
+         VALUES ($1, 'paused', NULL, $2)
+         ON CONFLICT (model_id) DO UPDATE SET status = 'paused', updated_by = EXCLUDED.updated_by, updated_at = now()`,
+        [req.params.modelId, admin.userId],
+      );
+      await tx.query(
+        `INSERT INTO platform_audit_events (actor_user_id, action, target_type, target_id)
+         VALUES ($1, 'provider.model.pause', 'model', $2)`,
+        [admin.userId, req.params.modelId],
+      );
+    });
+    const control = (await modelControls()).find((model) => model.id === req.params.modelId)!;
+    return { modelId: control.id, ...control };
+  });
+
+  app.post<{ Params: { modelId: string } }>("/admin/model-controls/:modelId/resume", async (req) => {
+    const admin = await requirePlatformAdmin(req, ["provider_ops", "super_admin"]);
+    providerAdapter.getModel(req.params.modelId);
+    await db.transaction(async (tx) => {
+      await tx.query(
+        `INSERT INTO platform_model_controls (model_id, status, max_output_tokens, updated_by)
+         VALUES ($1, 'active', NULL, $2)
+         ON CONFLICT (model_id) DO UPDATE SET status = 'active', updated_by = EXCLUDED.updated_by, updated_at = now()`,
+        [req.params.modelId, admin.userId],
+      );
+      await tx.query(
+        `INSERT INTO platform_audit_events (actor_user_id, action, target_type, target_id)
+         VALUES ($1, 'provider.model.resume', 'model', $2)`,
+        [admin.userId, req.params.modelId],
+      );
+    });
+    const control = (await modelControls()).find((model) => model.id === req.params.modelId)!;
+    return { modelId: control.id, ...control };
+  });
+
+  app.get("/admin/audit-events", async (req) => {
+    await requirePlatformAdmin(req);
+    const { rows } = await db.query(
+      `SELECT id, action, target_type AS "targetType", target_id AS "targetId", metadata,
+              created_at AS "createdAt"
+         FROM platform_audit_events ORDER BY created_at DESC LIMIT 100`,
+    );
+    return { events: rows };
+  });
+
+  app.get("/admin/developer-keys", async (req) => {
+    await requirePlatformAdmin(req, ["provider_ops", "super_admin"]);
+    const { rows } = await db.query(
+      `SELECT k.id, k.org_id AS "orgId", o.name AS "organisationName", k.name, k.key_prefix AS "keyPrefix",
+              k.created_at AS "createdAt", k.last_used_at AS "lastUsedAt", k.revoked_at AS "revokedAt",
+              o.developer_access_status AS "developerAccess"
+         FROM api_keys k
+         JOIN organisations o ON o.id = k.org_id
+        ORDER BY k.created_at DESC LIMIT 200`,
+    );
+    // Intentionally no key_hash and never any plaintext secret.
+    return { keys: rows };
+  });
+
+  async function setDeveloperAccess(req: FastifyRequest, orgId: string, status: "active" | "paused") {
+    const admin = await requirePlatformAdmin(req, ["provider_ops", "super_admin"]);
+    const { rowCount } = await db.transaction(async (tx) => {
+      const updated = await tx.query(
+        "UPDATE organisations SET developer_access_status = $2 WHERE id = $1",
+        [orgId, status],
+      );
+      if (!updated.rowCount) throw new NuruError("NOT_FOUND", "Organisation not found");
+      await tx.query(
+        `INSERT INTO platform_audit_events (actor_user_id, action, target_type, target_id, metadata)
+         VALUES ($1, $2, 'organisation', $3, $4::jsonb)`,
+        [admin.userId, `developer_access.${status}`, orgId, JSON.stringify({ status })],
+      );
+      return updated;
+    });
+    return { orgId, developerAccess: status, updated: rowCount === 1 };
+  }
+
+  app.post<{ Params: { orgId: string } }>("/admin/organisations/:orgId/developer-access/pause", async (req) =>
+    setDeveloperAccess(req, req.params.orgId, "paused"),
+  );
+
+  app.post<{ Params: { orgId: string } }>("/admin/organisations/:orgId/developer-access/resume", async (req) =>
+    setDeveloperAccess(req, req.params.orgId, "active"),
+  );
 
   // ---------- auth ----------
   app.post("/auth/dev-login", async (req, reply) => {
@@ -568,7 +757,8 @@ export function buildApp(deps: AppDeps): FastifyInstance {
 
   app.get<{ Params: { orgId: string } }>("/orgs/:orgId/api-keys", async (req) => {
     const claims = await requireAuth(req);
-    await requireOrgMember(claims.sub, req.params.orgId, req);
+    const { role } = await requireOrgMember(claims.sub, req.params.orgId, req);
+    if (role !== "owner") throw new NuruError("FORBIDDEN", "Only organisation owners can view developer keys");
     const { rows } = await db.query<Record<string, unknown>>(
       "SELECT id, name, key_prefix, created_at, last_used_at, revoked_at FROM api_keys WHERE org_id = $1 ORDER BY created_at DESC",
       [req.params.orgId],
@@ -579,7 +769,8 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   app.post<{ Params: { orgId: string } }>("/orgs/:orgId/api-keys", async (req, reply) => {
     const claims = await requireAuth(req);
     if (req.apiKey) throw new NuruError("FORBIDDEN", "API keys cannot create other API keys");
-    await requireOrgMember(claims.sub, req.params.orgId, req);
+    const { role } = await requireOrgMember(claims.sub, req.params.orgId, req);
+    if (role !== "owner") throw new NuruError("FORBIDDEN", "Only organisation owners can create developer keys");
     const body = createApiKeySchema.parse(req.body);
     const secret = `${API_KEY_PREFIX}${randomBytes(24).toString("base64url")}`;
     const prefix = secret.slice(0, API_KEY_PREFIX.length + 6);
@@ -595,7 +786,8 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   app.delete<{ Params: { orgId: string; keyId: string } }>("/orgs/:orgId/api-keys/:keyId", async (req) => {
     const claims = await requireAuth(req);
     if (req.apiKey) throw new NuruError("FORBIDDEN", "API keys cannot revoke API keys");
-    await requireOrgMember(claims.sub, req.params.orgId, req);
+    const { role } = await requireOrgMember(claims.sub, req.params.orgId, req);
+    if (role !== "owner") throw new NuruError("FORBIDDEN", "Only organisation owners can revoke developer keys");
     const { rowCount } = await db.query(
       "UPDATE api_keys SET revoked_at = now() WHERE id = $1 AND org_id = $2 AND revoked_at IS NULL",
       [req.params.keyId, req.params.orgId],
@@ -613,11 +805,15 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       const claims = await requireAuth(req);
       const { walletId } = await requireOrgMember(claims.sub, req.params.orgId, req);
       const body = aiRequestSchema.parse(req.body);
+      const outputCap = await assertModelAvailable(body.modelId);
+      const effectiveRequest = outputCap === null
+        ? body
+        : { ...body, maxOutputTokens: Math.min(body.maxOutputTokens, outputCap) };
       const requestId = randomUUID();
 
       // 1. Estimate the maximum possible cost at this organisation's price for the model.
       const price = (await orgPrices(req.params.orgId)).get(body.modelId);
-      const estimate = providerAdapter.estimateMaxCost(body, price);
+      const estimate = providerAdapter.estimateMaxCost(effectiveRequest, price);
 
       // 2. Reserve BEFORE any provider call. INSUFFICIENT_FUNDS -> 402 and nothing else happens.
       let reservation;
@@ -670,7 +866,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       // 3. Call the (mock) provider.
       let completion;
       try {
-        completion = await providerAdapter.complete(body);
+        completion = await providerAdapter.complete(effectiveRequest);
       } catch (e) {
         // 3b. Provider failed: release the whole reservation.
         await ledger.release({
